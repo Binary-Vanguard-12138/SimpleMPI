@@ -11,9 +11,10 @@ int main(int argc, char* argv[]) {
     int world_size = 0, world_rank = 0;
 
     int A_cnt = 0, B_cnt = 0, C_cnt = 0, D_cnt = 0, F_cnt = 0;
+    int local_A_cnt = 0, local_B_cnt = 0, local_C_cnt = 0, local_D_cnt = 0, local_F_cnt = 0;
     int Test_Count;
     int i;
-    int *data;
+    int *data = NULL;
     /* check and get commad line arguments */
     if (argc != 2) Usage(argv[0]);
     Test_Count = strtol(argv[1], NULL, 10);     //Get number of exams from the commandline
@@ -41,6 +42,8 @@ int main(int argc, char* argv[]) {
         sum += sendcounts[i];
     }
 
+	int local_data_cnt = sendcounts[world_rank];
+
     // print calculated send counts and displacements for each process
     if (MASTER_PROCESS == world_rank) {
         for (int i = 0; i < world_size; i++) {
@@ -48,56 +51,65 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Allocate space for array data
-    data = calloc(Test_Count, sizeof(int));
-    srandom(time(NULL));   // Seed the random number generator 
- 
-    if (0 == world_rank) {
+    if (MASTER_PROCESS == world_rank) {
+    	// Allocate space for array data
+	    data = calloc(Test_Count, sizeof(int));
+    	srandom(time(NULL));   // Seed the random number generator
+
         // Generate random data in root process
         for(i = 0; i < Test_Count; i++)
             data[i] = 50 + (100 - 50) * random()/((int) RAND_MAX);  // 50 <= data <= 100
     }
-
     // divide the data among processes as described by sendcounts and displs
-    MPI_Scatterv(&data, sendcounts, displs, MPI_CHAR, &local_data, localnum, MPI_CHAR, 0, MPI_COMM_WORLD);
-
-    printf("Scattered data at rank %d \n", world_rank);
-    for (int i = 0; i < sendcounts[world_rank]; i ++) {
+    MPI_Scatterv(data, sendcounts, displs, MPI_INT, local_data, localnum, MPI_INT, MASTER_PROCESS, MPI_COMM_WORLD);
+	
+    // Print list of grades
+    printf("Scattered data at rank %d {", world_rank);
+    for (int i = 0; i < local_data_cnt; i ++) {
         if (i == sendcounts[world_rank] - 1) {
             printf("%d}\n", local_data[i]);
         } else {
             printf("%d, ", local_data[i]);
         }
     }
-
-    // Print list of grades
-    printf("\nList of grades:\n");
-    for(i = 0; i < Test_Count; i++)
-        printf("%d ", data[i]);
-    printf("\n\n"); 
     // count A, B, C, D, and F grades
-    for(i = 0; i < Test_Count; i++){
-        if (data[i] >= 90) 
-        A_cnt++;
-        else if (data[i] >= 80) 
-        B_cnt++;
-        else if (data[i] >= 70)
-        C_cnt++;
-        else if (data[i] >= 60)
-        D_cnt++;
+    for(i = 0; i < local_data_cnt; i++){
+        if (local_data[i] >= 90) 
+        	local_A_cnt++;
+        else if (local_data[i] >= 80) 
+        	local_B_cnt++;
+        else if (local_data[i] >= 70)
+	        local_C_cnt++;
+        else if (local_data[i] >= 60)
+        	local_D_cnt++;
         else
-        F_cnt++;
+        	local_F_cnt++;
     }
 // Print number of A, B, C, D, and F grades
-    printf("Number of A = %d\n", A_cnt);
-    printf("Number of B = %d\n", B_cnt);
-    printf("Number of C = %d\n", C_cnt);
-    printf("Number of D = %d\n", D_cnt);
-    printf("Number of F = %d\n", F_cnt);
+    printf("Process[%d] Number of A = %d\n", world_rank, local_A_cnt);
+    printf("Process[%d] Number of B = %d\n", world_rank, local_B_cnt);
+    printf("Process[%d] Number of C = %d\n", world_rank, local_C_cnt);
+    printf("Process[%d] Number of D = %d\n", world_rank, local_D_cnt);
+    printf("Process[%d] Number of F = %d\n", world_rank, local_F_cnt);
 
+	MPI_Reduce(&local_A_cnt, &A_cnt, 1, MPI_INT, MPI_SUM, MASTER_PROCESS, MPI_COMM_WORLD);
+	MPI_Reduce(&local_B_cnt, &B_cnt, 1, MPI_INT, MPI_SUM, MASTER_PROCESS, MPI_COMM_WORLD);
+	MPI_Reduce(&local_C_cnt, &C_cnt, 1, MPI_INT, MPI_SUM, MASTER_PROCESS, MPI_COMM_WORLD);
+	MPI_Reduce(&local_D_cnt, &D_cnt, 1, MPI_INT, MPI_SUM, MASTER_PROCESS, MPI_COMM_WORLD);
+	MPI_Reduce(&local_F_cnt, &F_cnt, 1, MPI_INT, MPI_SUM, MASTER_PROCESS, MPI_COMM_WORLD);
+
+	if (MASTER_PROCESS == world_rank) {
+    	printf("Number of A = %d\n", A_cnt);
+	    printf("Number of B = %d\n", B_cnt);
+	    printf("Number of C = %d\n", C_cnt);
+	    printf("Number of D = %d\n", D_cnt);
+    	printf("Number of F = %d\n", F_cnt);
+	}
     MPI_Finalize();
     free(sendcounts);
     free(displs);
+	free(local_data);
+	if (data) free(data);
 }
 
 void Usage(char prog_name[]){
