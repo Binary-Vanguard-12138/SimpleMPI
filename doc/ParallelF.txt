@@ -1,0 +1,84 @@
+Part A
+A school district administered an examination taken by a large number of students. The scores in this 
+exam range from a minimum of 50 to a maximum of 100. The director of the school district instructed 
+the local computing center to use its cluster computer to write an MPI program that will count the 
+number of students who received a grade of A, B, C, D, and F. The program should perform the following 
+activities: 
+  The program should be executed using the following command:
+mpirun –np <number of processors> ./ProgramName  <number of exams>
+ The number of exams is read from the command line argument into variable Test_Count.
+   Process 0 allocates space in memory to store the specified number of tests. 
+ Process 0 uses the random number generator to create an array of test scores called Data[i]. The 
+minimum test score cannot be lower than 50 and the maximum test score cannot be higher that 
+100. So, 50 ≤ data[i] ≤ 100 and 0 ≤ i < Test_Count.
+  Process 0 distributes elements of array data[i] to other processes using MPI_Scatterv 
+(Test_Count  may not divide evenly between processes). Processes receive their share of the 
+data in an array called local_data[]
+ Each process computes the number of exams it needs to process and stores it in a variable 
+named local_data_cnt. 
+ Each Process computes the number of A, B, C, D, and F grades in the test score data it received 
+via MPI_Scatterv  by incrementing its local counters, local_A_cnt, local_B_cnt, local_C_cnt, 
+local_D_cnt, and local_F_cnt, respectively. 
+ Once all the nodes have finished processing their lists of local test scores, they add their local 
+counts to the global counters, A_cnt, B_cnt, C_cnt, D_cnt, and F_cnt using MPI_Reduce().
+ Node 0, finally prints the final tally.
+------------------------------------------------------------
+Part B
+Write the same program as in Part A, but this time use OpenMP.
+-----------------------------------------------------------
+PS. Serial implementation of this program is shown on the next pages.
+/* *******************************************************
+   This program generate a list of grades from 50 to 100.
+   It prints the number of A, B, C, D, and F grades.
+   To compile the program use:
+                gcc -o <FileName> <FileName.c>
+   To run the program us:
+                ./FileName <number of exams>
+*********************************************************/
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+void Usage(char prog_name[]);
+int main(int argc, char* argv[]) {
+    int A_cnt = 0, B_cnt = 0, C_cnt = 0, D_cnt = 0, F_cnt = 0;
+    int Test_Count;
+    int i;
+    int *data;
+    /* check and get commad line arguments */
+    if (argc != 2) Usage(argv[0]);
+    Test_Count = strtol(argv[1], NULL, 10);     //Get number of exams from the commandline
+// Allocate space for array data
+   data = malloc(Test_Count * sizeof(int));
+    srandom(time(NULL));   // Seed the random number generator 
+    for(i = 0; i < Test_Count; i++)
+data[i] = 50 + (100 - 50) * random()/((int) RAND_MAX);  // 50 <= data <= 100
+// Print list of grades
+    printf("\nList of grades:\n");
+    for(i = 0; i < Test_Count; i++)
+printf("%d ", data[i]);
+    printf("\n\n");
+// count A, B, C, D, and F grades
+    for(i = 0; i < Test_Count; i++){
+if (data[i] >= 90) 
+A_cnt++;
+else if (data[i] >= 80)
+B_cnt++;
+else if (data[i] >= 70)
+C_cnt++;
+else if (data[i] >= 60)
+D_cnt++;
+else
+F_cnt++;
+    }
+// Print number of A, B, C, D, and F grades
+    printf("Number of A = %d\n", A_cnt);
+    printf("Number of B = %d\n", B_cnt);
+    printf("Number of C = %d\n", C_cnt);
+    printf("Number of D = %d\n", D_cnt);
+    printf("Number of F = %d\n", F_cnt);
+}
+void Usage(char prog_name[]){
+   fprintf(stderr, "usage: %s ", prog_name);
+   fprintf(stderr, "<number of tests>\n");
+   exit(0);
+}
