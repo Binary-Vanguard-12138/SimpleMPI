@@ -27,13 +27,15 @@ int main(int argc, char* argv[]) {
 
 	// Print list of grades
 	printf("\nList of grades [%d]:\n", Test_Count);
-	for(i = 0; i < Test_Count; i++)
+	for(i = 0; i < Test_Count; i++) {
 		printf("%d ", data[i]);
+	}
 	printf("\n\n"); 
 
 	// count A, B, C, D, and F grades
-	#pragma omp parallel for num_threads(thread_count) shared(data) private(i) reduction(+: A_cnt, B_cnt, C_cnt, D_cnt, F_cnt)
+	#pragma omp parallel num_threads(thread_count) shared(data) private(i)
 	{
+		#pragma omp for reduction(+: A_cnt, B_cnt, C_cnt, D_cnt, F_cnt) 
 		for (i = 0; i < Test_Count; i++){
 			if (data[i] >= 90) 
 				A_cnt++;
@@ -54,7 +56,7 @@ int main(int argc, char* argv[]) {
 	printf("Number of C = %d\n", C_cnt);
 	printf("Number of D = %d\n", D_cnt);
 	printf("Number of F = %d\n", F_cnt);
-
+/*
 	// Recalculate for verification.
 	A_cnt = B_cnt = C_cnt = D_cnt = F_cnt = 0;
 	for (i = 0; i < Test_Count; i++){
@@ -71,11 +73,13 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Print number of A, B, C, D, and F grades
+	printf("\nRecalculate for verification \n");
 	printf("Number of A = %d\n", A_cnt);
 	printf("Number of B = %d\n", B_cnt);
 	printf("Number of C = %d\n", C_cnt);
 	printf("Number of D = %d\n", D_cnt);
 	printf("Number of F = %d\n", F_cnt);
+*/
 	return 0;
 }
 
