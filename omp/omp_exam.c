@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 	printf("\n\n"); 
 
 	// count A, B, C, D, and F grades
-	#pragma omp parallel for num_threads(thread_count) reduction(+: A_cnt, B_cnt, C_cnt, D_cnt, F_cnt)
+	#pragma omp parallel for num_threads(thread_count) shared(data) private(i) reduction(+: A_cnt, B_cnt, C_cnt, D_cnt, F_cnt)
 	{
 		for (i = 0; i < Test_Count; i++){
 			if (data[i] >= 90) 
